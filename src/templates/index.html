@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 AI Resume Ranker Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-bullseye"></i> AI Resume Ranker Pro
+            </a>
+            <span class="navbar-text text-light">
+                <small><em>Advanced AI-powered resume screening with semantic matching and ML ranking</em></small>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row">
+                    <div class="col-12">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-tachometer-alt"></i> System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Advanced Matching Status -->
+                        {% if session.get('use_advanced_matching') %}
+                            <div class="mb-2">
+                                <span class="badge bg-success">🚀 Advanced Matching</span>
+                                <small class="d-block text-muted">{{ session.get('embedding_model', 'all-mpnet-base-v2') }}</small>
+                            </div>
+                        {% else %}
+                            <div class="mb-2">
+                                <span class="badge bg-info">📊 Traditional Matching</span>
+                            </div>
+                        {% endif %}
+
+                        <hr>
+
+                        <!-- Status Indicators -->
+                        <div class="mb-2">
+                            {% if session.get('jd_text') %}
+                                <span class="badge bg-success">✅ JD Loaded</span>
+                            {% else %}
+                                <span class="badge bg-secondary">📝 JD: Not loaded</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-2">
+                            {% if session.get('uploaded_files') %}
+                                <span class="badge bg-success">✅ {{ session.get('uploaded_files')|length }} Resume(s)</span>
+                            {% else %}
+                                <span class="badge bg-secondary">📄 Resumes: Not uploaded</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-2">
+                            {% if session.get('evaluation_done') %}
+                                <span class="badge bg-success">✅ Evaluation Complete</span>
+                            {% else %}
+                                <span class="badge bg-secondary">⚡ Evaluation: Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- About Card -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5><i class="fas fa-info-circle"></i> About</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="small">This app evaluates resumes against a job description using NLP and ML.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9">
+                <!-- Job Description Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-briefcase"></i> Job Description</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('upload_jd') }}" method="post" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="jd_option" id="jd_text" value="text" 
+                                           {% if session.get('jd_option', 'text') == 'text' %}checked{% endif %} onchange="toggleJDInput()">
+                                    <label class="form-check-label" for="jd_text">Text Input</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="jd_option" id="jd_file" value="file" 
+                                           {% if session.get('jd_option') == 'file' %}checked{% endif %} onchange="toggleJDInput()">
+                                    <label class="form-check-label" for="jd_file">Upload File</label>
+                                </div>
+                            </div>
+
+                            <div id="jd_text_input" {% if session.get('jd_option') == 'file' %}style="display:none"{% endif %}>
+                                <div class="mb-3">
+                                    <textarea class="form-control" name="jd_text" rows="6" placeholder="Enter job description here...">{{ session.get('jd_text', '') }}</textarea>
+                                </div>
+                            </div>
+
+                            <div id="jd_file_input" {% if session.get('jd_option', 'text') == 'text' %}style="display:none"{% endif %}>
+                                <div class="mb-3">
+                                    <input type="file" class="form-control" name="jd_file" accept=".docx,.txt">
+                                    <small class="form-text text-muted">Upload .docx or .txt files</small>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Load JD
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Configuration Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-cogs"></i> Matching Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('update_config') }}" method="post">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="use_advanced_matching" id="use_advanced_matching" 
+                                               {% if session.get('use_advanced_matching') %}checked{% endif %} onchange="toggleAdvancedOptions()">
+                                        <label class="form-check-label" for="use_advanced_matching">
+                                            🚀 Use Advanced Semantic Matching (FAISS + Transformers)
+                                        </label>
+                                        <small class="form-text text-muted">Enable FAISS vector database with state-of-the-art transformer embeddings</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6" id="advanced_options" {% if not session.get('use_advanced_matching') %}style="display:none"{% endif %}>
+                                    <select class="form-select" name="embedding_model">
+                                        <option value="all-mpnet-base-v2" {% if session.get('embedding_model') == 'all-mpnet-base-v2' %}selected{% endif %}>all-mpnet-base-v2</option>
+                                        <option value="all-MiniLM-L6-v2" {% if session.get('embedding_model') == 'all-MiniLM-L6-v2' %}selected{% endif %}>all-MiniLM-L6-v2</option>
+                                        <option value="paraphrase-multilingual-MiniLM-L12-v2" {% if session.get('embedding_model') == 'paraphrase-multilingual-MiniLM-L12-v2' %}selected{% endif %}>paraphrase-multilingual-MiniLM-L12-v2</option>
+                                    </select>
+                                    <small class="form-text text-muted">Choose the transformer model for embeddings</small>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-secondary mt-3">
+                                <i class="fas fa-save"></i> Update Configuration
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Resume Upload Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-file-upload"></i> Upload Resumes</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('upload_resumes') }}" method="post" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <input type="file" class="form-control" name="resume_files" multiple accept=".docx">
+                                <small class="form-text text-muted">Choose multiple .docx files</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Upload Resumes
+                            </button>
+                        </form>
+
+                        <!-- Show uploaded files -->
+                        {% if session.get('uploaded_files') %}
+                            <div class="mt-3">
+                                <h6>Uploaded Files:</h6>
+                                <ul class="list-group">
+                                    {% for file in session.get('uploaded_files') %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            {{ file.name }}
+                                            <span class="badge bg-success rounded-pill">
+                                                <i class="fas fa-check"></i>
+                                            </span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Evaluate Button -->
+                <div class="text-center mb-4">
+                    <form action="{{ url_for('evaluate_resumes') }}" method="post">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-rocket"></i> 🚀 Evaluate Resumes
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Results Section -->
+                {% if session.get('evaluation_done') and session.get('results') %}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-bar"></i> Results Overview</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h4 class="text-primary">{{ session.get('results')|length }}</h4>
+                                            <p class="mb-0">Total Resumes</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            {% set avg_score = (session.get('results')|sum(attribute='Score') / session.get('results')|length)|round(2) %}
+                                            <h4 class="text-success">{{ avg_score }}</h4>
+                                            <p class="mb-0">Average Score</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h4 class="text-info">
+                                                {% if session.get('use_advanced_matching') %}
+                                                    Advanced Semantic
+                                                {% else %}
+                                                    Traditional
+                                                {% endif %}
+                                            </h4>
+                                            <p class="mb-0">Engine Type</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-filter"></i> Filters & Shortlisting</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('filter_results') }}" method="post">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="threshold" class="form-label">Min Score Threshold</label>
+                                        <input type="range" class="form-range" name="threshold" id="threshold" 
+                                               min="0" max="1" step="0.1" value="{{ session.get('threshold', 0.5) }}" 
+                                               oninput="updateThresholdValue(this.value)">
+                                        <small id="threshold-value" class="form-text text-muted">{{ session.get('threshold', 0.5) }}</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="filter_exp_min" class="form-label">Min Experience (Years)</label>
+                                        <input type="range" class="form-range" name="filter_exp_min" id="filter_exp_min" 
+                                               min="0" max="20" value="{{ session.get('filter_exp_min', 0) }}" 
+                                               oninput="updateExpMinValue(this.value)">
+                                        <small id="exp-min-value" class="form-text text-muted">{{ session.get('filter_exp_min', 0) }} years</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="filter_exp_max" class="form-label">Max Experience (Years)</label>
+                                        <input type="range" class="form-range" name="filter_exp_max" id="filter_exp_max" 
+                                               min="0" max="20" value="{{ session.get('filter_exp_max', 10) }}" 
+                                               oninput="updateExpMaxValue(this.value)">
+                                        <small id="exp-max-value" class="form-text text-muted">{{ session.get('filter_exp_max', 10) }} years</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="search_keyword" class="form-label">Search by keyword</label>
+                                        <input type="text" class="form-control" name="search_keyword" id="search_keyword" 
+                                               placeholder="Skills, roles, education..." value="{{ session.get('search_keyword', '') }}">
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label for="filter_skill" class="form-label">Filter by Skill</label>
+                                        <select class="form-select" name="filter_skill" id="filter_skill">
+                                            <option value="All">All Skills</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="filter_role" class="form-label">Filter by Role</label>
+                                        <select class="form-select" name="filter_role" id="filter_role">
+                                            <option value="All">All Roles</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary mt-3">
+                                    <i class="fas fa-filter"></i> Apply Filters
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Results Display -->
+                    <div class="card mb-4" id="results-container">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="fas fa-list"></i> Filtered Results</h5>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('download_results', format='csv') }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-download"></i> CSV
+                                </a>
+                                <a href="{{ url_for('download_results', format='excel') }}" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-download"></i> Excel
+                                </a>
+                                <a href="{{ url_for('download_results', format='pdf') }}" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-download"></i> PDF
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="results-table">
+                                {% set filtered_results = get_filtered_results() %}
+                                {% if filtered_results %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Rank</th>
+                                                    <th>Filename</th>
+                                                    <th>Score</th>
+                                                    {% if session.get('use_advanced_matching') %}
+                                                        <th>Semantic Score</th>
+                                                    {% endif %}
+                                                    <th>Method</th>
+                                                    <th>Skills</th>
+                                                    <th>Roles</th>
+                                                    <th>Education</th>
+                                                    <th>Experience</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for result in filtered_results %}
+                                                    <tr>
+                                                        <td><span class="badge bg-primary">{{ loop.index }}</span></td>
+                                                        <td><strong>{{ result.Filename }}</strong></td>
+                                                        <td>
+                                                            <span class="{% if result.Score >= 80 %}score-high{% elif result.Score >= 60 %}score-medium{% else %}score-low{% endif %}">
+                                                                {{ result.Score }}%
+                                                            </span>
+                                                        </td>
+                                                        {% if session.get('use_advanced_matching') and result.get('Semantic Score') %}
+                                                            <td>
+                                                                <span class="{% if result['Semantic Score'] >= 80 %}score-high{% elif result['Semantic Score'] >= 60 %}score-medium{% else %}score-low{% endif %}">
+                                                                    {{ result['Semantic Score'] }}%
+                                                                </span>
+                                                            </td>
+                                                        {% endif %}
+                                                        <td><small class="text-muted">{{ result.Method }}</small></td>
+                                                        <td><small>{{ result.Skills }}</small></td>
+                                                        <td><small>{{ result.Roles }}</small></td>
+                                                        <td><small>{{ result.Education }}</small></td>
+                                                        <td>{{ result.Experience }} years</td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                Showing {{ filtered_results|length }} of {{ session.get('results')|length }} results
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <small class="text-muted">
+                                                Average Score: {{ (filtered_results|sum(attribute='Score') / filtered_results|length)|round(2) }}%
+                                            </small>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No candidates match the current filters.</p>
+                                        <small class="text-muted">Try adjusting your filter criteria.</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feedback Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-comments"></i> Provide Feedback</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('submit_feedback') }}" method="post">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="rating" class="form-label">Rate the evaluation (1-5)</label>
+                                        <input type="range" class="form-range" name="rating" id="rating" 
+                                               min="1" max="5" value="3" oninput="updateRatingValue(this.value)">
+                                        <small id="rating-value" class="form-text text-muted">3</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="comments" class="form-label">Comments</label>
+                                        <textarea class="form-control" name="comments" id="comments" rows="3" placeholder="Your feedback..."></textarea>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-info mt-3">
+                                    <i class="fas fa-paper-plane"></i> Submit Feedback
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

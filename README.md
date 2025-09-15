@@ -1,6 +1,21 @@
 # AI Resume Ranker - Complete Project Documentation
 
-## 📋 Project Deliverables
+## � Quick Start
+
+### Generate Professional Documentation
+```bash
+# Generate .docx documentation (Word format)
+python generate_docs.py
+
+# Or use the main generator directly
+python generate_documentation.py
+```
+
+This creates `AI_Resume_Ranker_Documentation.docx` with professional formatting, tables, and styles.
+
+---
+
+## �📋 Project Deliverables
 
 ### 🎯 **Core Deliverables**
 - ✅ **AI-Powered Resume Ranking System** - Complete web application with advanced NLP/ML capabilities

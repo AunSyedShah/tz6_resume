@@ -45,6 +45,11 @@ app.register_blueprint(export_bp, url_prefix='/api')
 # Add export directory configuration
 app.config['EXPORT_DIR'] = os.path.join(os.path.dirname(__file__), 'exports')
 
+# Ensure export directory exists
+export_dir = app.config['EXPORT_DIR']
+os.makedirs(export_dir, exist_ok=True)
+print(f"Export directory configured: {export_dir}")
+
 # Configuration
 UPLOAD_FOLDER = Path('/tmp/resume_uploads')
 UPLOAD_FOLDER.mkdir(exist_ok=True)
@@ -415,8 +420,16 @@ def download_results(format):
         exporter = CandidateExporter(output_dir=app.config.get('EXPORT_DIR', 'exports'))
         
         if format == 'csv':
-            # Keep simple CSV for backward compatibility
-            df = pd.DataFrame(filtered_results)
+            # Format scores as percentages for CSV export
+            csv_data = []
+            for result in filtered_results:
+                csv_row = result.copy()
+                # Convert decimal scores to percentages
+                if 'Score' in csv_row and csv_row['Score'] < 1:
+                    csv_row['Score'] = round(csv_row['Score'] * 100, 1)
+                csv_data.append(csv_row)
+            
+            df = pd.DataFrame(csv_data)
             output = StringIO()
             df.to_csv(output, index=False)
             output.seek(0)

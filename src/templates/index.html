@@ -280,9 +280,17 @@
                     <h3><i class="fas fa-trophy text-warning"></i> Ranked Results</h3>
                     <div>
                         <span class="badge bg-info fs-6">{{ filtered_results|length }} candidates processed</span>
-                        <a href="{{ url_for('download_results', format='excel') }}" class="btn btn-outline-success btn-sm ms-2">
-                            <i class="fas fa-download"></i> Download Excel
-                        </a>
+                        <div class="btn-group ms-2" role="group">
+                            <a href="{{ url_for('download_results', format='excel') }}" class="btn btn-outline-success btn-sm" title="Download Excel Report">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </a>
+                            <a href="{{ url_for('download_results', format='pdf') }}" class="btn btn-outline-danger btn-sm" title="Download PDF Report">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                            <a href="{{ url_for('download_results', format='csv') }}" class="btn btn-outline-primary btn-sm" title="Download CSV Data">
+                                <i class="fas fa-file-csv"></i> CSV
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -429,6 +437,46 @@
                 }, 500);
             }
         });
+
+        // Export functionality with loading feedback
+        document.addEventListener('DOMContentLoaded', function() {
+            const exportButtons = document.querySelectorAll('a[href*="download"]');
+            
+            exportButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // Show loading state
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                    this.classList.add('disabled');
+                    
+                    // Re-enable after 30 seconds (in case of slow export)
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.classList.remove('disabled');
+                    }, 30000);
+                });
+            });
+        });
+
+        // Add export summary information
+        function showExportInfo() {
+            const exportButtons = document.querySelectorAll('a[href*="download"]');
+            if (exportButtons.length > 0) {
+                // Add tooltip information
+                exportButtons.forEach(button => {
+                    if (button.href.includes('excel')) {
+                        button.title = 'Download detailed Excel report with analytics and charts';
+                    } else if (button.href.includes('pdf')) {
+                        button.title = 'Download professional PDF report for presentations';
+                    } else if (button.href.includes('csv')) {
+                        button.title = 'Download raw CSV data for further analysis';
+                    }
+                });
+            }
+        }
+
+        // Initialize export info on page load
+        document.addEventListener('DOMContentLoaded', showExportInfo);
     </script>
 </body>
 </html>

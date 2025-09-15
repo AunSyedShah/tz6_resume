@@ -162,24 +162,32 @@ def get_export_formats():
 
 # Utility functions for the main Flask app
 def prepare_candidates_for_export(ranked_resumes, matching_results=None):
-    """Prepare candidate data for export."""
+    """Prepare candidate data for export with current Flask app result structure."""
     candidates = []
     
     for idx, resume in enumerate(ranked_resumes):
         candidate_data = {
-            'filename': resume.get('filename', f'candidate_{idx+1}'),
-            'final_score': resume.get('score', 0),
-            'confidence': resume.get('confidence', 0.8),  # Default confidence
+            'filename': resume.get('Filename', f'candidate_{idx+1}'),
+            'final_score': resume.get('Score', 0),
+            'confidence': 0.8,  # Default confidence
+            'method': resume.get('Method', 'Unknown'),
             'features': {
-                'skill_match': resume.get('skill_match', 0),
-                'experience_match': resume.get('experience_match', 0),
-                'seniority_match': resume.get('seniority_match', 0),
-                'domain_relevance': resume.get('domain_relevance', 0),
-                'technical_depth': resume.get('technical_depth', 0),
-                'certification_match': resume.get('certification_match', 0),
-                'education_match': resume.get('education_match', 0)
+                'skills': resume.get('All_Skills', []),
+                'roles': resume.get('All_Roles', []),
+                'education': resume.get('Education', ''),
+                'experience_years': resume.get('Experience', 0),
+                'skill_match': len(resume.get('All_Skills', [])) / 10,  # Normalize skill count
+                'experience_match': min(resume.get('Experience', 0) / 10, 1.0),  # Normalize experience
+                'seniority_match': 0.5,  # Default
+                'domain_relevance': 0.5,  # Default
+                'technical_depth': len(resume.get('All_Skills', [])) / 15,  # Normalize
+                'certification_match': 0.0,  # Default
+                'education_match': 1.0 if resume.get('Education') and resume.get('Education') != 'No education detected' else 0.0
             },
-            'algorithm_scores': resume.get('algorithm_scores', {})
+            'algorithm_scores': {
+                'overall_score': resume.get('Score', 0),
+                'semantic_score': resume.get('Score', 0) if 'Semantic' in resume.get('Method', '') else 0.0
+            }
         }
         candidates.append(candidate_data)
     

@@ -153,11 +153,11 @@ class CandidateExporter:
             confidence = candidate.get('confidence', 0)
             features = candidate.get('features', {})
             
-            ws.cell(row=row, column=3, value=f"{final_score:.3f}").border = self.border
-            ws.cell(row=row, column=4, value=f"{confidence:.3f}").border = self.border
-            ws.cell(row=row, column=5, value=f"{features.get('skill_match', 0):.3f}").border = self.border
-            ws.cell(row=row, column=6, value=f"{features.get('experience_match', 0):.3f}").border = self.border
-            ws.cell(row=row, column=7, value=f"{features.get('domain_relevance', 0):.3f}").border = self.border
+            ws.cell(row=row, column=3, value=f"{final_score*100:.1f}%").border = self.border
+            ws.cell(row=row, column=4, value=f"{confidence*100:.1f}%").border = self.border
+            ws.cell(row=row, column=5, value=f"{features.get('skill_match', 0)*100:.1f}%").border = self.border
+            ws.cell(row=row, column=6, value=f"{features.get('experience_match', 0)*100:.1f}%").border = self.border
+            ws.cell(row=row, column=7, value=f"{features.get('domain_relevance', 0)*100:.1f}%").border = self.border
             
             # Key skills (top 3)
             key_skills = self._extract_top_skills(candidate)
@@ -210,10 +210,10 @@ class CandidateExporter:
         stats = [
             ['Metric', 'Value'],
             ['Total Candidates', len(candidates)],
-            ['Average Score', f"{np.mean(scores):.3f}"],
-            ['Median Score', f"{np.median(scores):.3f}"],
-            ['Standard Deviation', f"{np.std(scores):.3f}"],
-            ['Average Confidence', f"{np.mean(confidences):.3f}"],
+            ['Average Score', f"{np.mean(scores)*100:.1f}%"],
+            ['Median Score', f"{np.median(scores)*100:.1f}%"],
+            ['Standard Deviation', f"{np.std(scores)*100:.1f}%"],
+            ['Average Confidence', f"{np.mean(confidences)*100:.1f}%"],
             ['Top 10%', len([s for s in scores if s >= np.percentile(scores, 90)])],
             ['Top 25%', len([s for s in scores if s >= np.percentile(scores, 75)])],
             ['Recommended Candidates', len([s for s in scores if s >= 0.6])]
@@ -232,7 +232,7 @@ class CandidateExporter:
         ws['D3'].font = Font(name='Arial', size=14, bold=True)
         
         # Create score ranges
-        ranges = ['0.0-0.3', '0.3-0.5', '0.5-0.7', '0.7-1.0']
+        ranges = ['0-30%', '30-50%', '50-70%', '70-100%']
         range_counts = [
             len([s for s in scores if 0.0 <= s < 0.3]),
             len([s for s in scores if 0.3 <= s < 0.5]),
@@ -269,14 +269,14 @@ class CandidateExporter:
             algorithm_scores = candidate.get('algorithm_scores', {})
             
             ws.cell(row=idx, column=1, value=name).border = self.border
-            ws.cell(row=idx, column=2, value=f"{candidate.get('final_score', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=3, value=f"{features.get('skill_match', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=4, value=f"{features.get('experience_match', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=5, value=f"{features.get('seniority_match', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=6, value=f"{features.get('domain_relevance', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=7, value=f"{features.get('technical_depth', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=8, value=f"{features.get('certification_match', 0):.3f}").border = self.border
-            ws.cell(row=idx, column=9, value=f"{features.get('education_match', 0):.3f}").border = self.border
+            ws.cell(row=idx, column=2, value=f"{candidate.get('final_score', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=3, value=f"{features.get('skill_match', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=4, value=f"{features.get('experience_match', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=5, value=f"{features.get('seniority_match', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=6, value=f"{features.get('domain_relevance', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=7, value=f"{features.get('technical_depth', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=8, value=f"{features.get('certification_match', 0)*100:.1f}%").border = self.border
+            ws.cell(row=idx, column=9, value=f"{features.get('education_match', 0)*100:.1f}%").border = self.border
             
             # Algorithm breakdown
             algo_summary = ", ".join([f"{k}: {v:.2f}" for k, v in algorithm_scores.items() if k != 'ensemble_final'])
@@ -419,7 +419,7 @@ class CandidateExporter:
         scores = [c.get('final_score', 0) for c in candidates]
         summary_text = f"""
         Analysis of {len(candidates)} candidate resumes using our 4-phase enhanced AI system.
-        Average matching score: {np.mean(scores):.2%}
+        Average matching score: {np.mean(scores)*100:.1f}%
         Recommended candidates (score ≥ 60%): {len([s for s in scores if s >= 0.6])}
         High-confidence matches: {len([c for c in candidates if c.get('confidence', 0) >= 0.8])}
         """
@@ -442,8 +442,8 @@ class CandidateExporter:
             table_data.append([
                 str(idx),
                 name,
-                f"{score:.3f}",
-                f"{confidence:.3f}",
+                f"{score*100:.1f}%",
+                f"{confidence*100:.1f}%",
                 recommendation
             ])
         
@@ -474,7 +474,7 @@ class CandidateExporter:
         • Poor (0-29%): {len([s for s in scores if s < 0.3])} candidates
         
         System Performance:
-        • Average confidence level: {np.mean([c.get('confidence', 0) for c in candidates]):.1%}
+        • Average confidence level: {np.mean([c.get('confidence', 0) for c in candidates])*100:.1f}%
         • Algorithm consistency: High (4-phase enhanced system)
         • Processing time: Optimized for real-time analysis
         """

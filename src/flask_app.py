@@ -408,10 +408,10 @@ def download_results(format):
         filtered_results = get_filtered_results()
         
         if not filtered_results:
-            flash('No results match the current filters.', 'warning')
-            return redirect(url_for('index'))
+            # Allow export of empty results - create file with headers only
+            flash('Exporting empty results (no candidates match current filters).', 'info')
         
-        # Prepare candidates for export
+        # Prepare candidates for export (handles empty list gracefully)
         candidates = prepare_candidates_for_export(filtered_results)
         job_description = session.get('jd_text', 'Job Description Not Available')
         
